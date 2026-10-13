@@ -232,7 +232,8 @@ function renderOutcome(s) {
 }
 
 function renderTasks() {
-  const tasks = state.day.tasks;
+  // Finished tasks are hidden; they show up in the sessions list instead.
+  const tasks = state.day.tasks.filter((t) => !t.done);
   // A single click picks the task for the next session; a double-click edits its text.
   const pickable = (t) => !t.done && !state.pending;
   const list = h('ul', { class: 'tasks' }, tasks.map((t) =>
@@ -295,7 +296,7 @@ function renderTasks() {
     h('input', { id: 'new-task', name: 'text', class: 'text', placeholder: 'Add a task' }),
     h('button', { class: 'quiet' }, 'Add'));
 
-  return [list, add];
+  return [tasks.length ? list : h('p', { class: 'muted' }, 'Nothing left. Add a task below.'), add];
 }
 
 // Only sessions that ran their full length and were marked done are kept.

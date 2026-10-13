@@ -68,7 +68,9 @@ export async function deleteTask(date, taskId) {
 export async function reorderTasks(date, taskIds) {
   const day = loadDay(date);
   const byId = new Map(day.tasks.map((t) => [t.id, t]));
-  day.tasks = taskIds.map((id) => byId.get(id)).filter(Boolean);
+  const listed = taskIds.map((id) => byId.get(id)).filter(Boolean);
+  // Tasks not in taskIds (e.g. hidden finished ones) keep their place at the end.
+  day.tasks = [...listed, ...day.tasks.filter((t) => !taskIds.includes(t.id))];
   write(dayKey(date), day);
 }
 

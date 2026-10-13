@@ -189,19 +189,15 @@ function renderStartSession() {
   if (!open.length) {
     return h('section', { class: 'card session' }, h('p', { class: 'muted' }, 'All tasks done. Add one below to start another session.'));
   }
-  if (!open.some((t) => t.id === state.startTaskId)) state.startTaskId = null;
+  const picked = open.find((t) => t.id === state.startTaskId);
+  if (!picked) state.startTaskId = null;
 
-  return h('section', { class: 'card session' },
-    h('div', { class: 'label' }, 'Next session — pick a task'),
-    h('ul', { class: 'pick-list' }, open.map((t) =>
-      h('li', {},
-        h('button', {
-          class: 'pick' + (t.id === state.startTaskId ? ' selected' : ''),
-          onclick: () => { state.startTaskId = t.id; render(); },
-        },
-          h('span', { class: 'dot', style: `background:${tagColor(t.tagId)}` }),
-          t.text)))),
+  return h('section', { id: 'next-session', class: 'card session', style: picked && `--tag:${tagColor(picked.tagId)}` },
+    h('div', { class: 'label' }, 'Next session'),
     h('div', { class: 'start-row' },
+      picked
+        ? h('span', { class: 'picked' }, picked.text)
+        : h('span', { class: 'picked muted' }, 'Click a task below to pick it'),
       h('label', { class: 'minutes' },
         h('input', {
           type: 'text', inputmode: 'numeric', maxlength: 3, value: state.startMinutes,
@@ -237,9 +233,18 @@ function renderOutcome(s) {
 
 function renderTasks() {
   const tasks = state.day.tasks;
+  // A single click picks the task for the next session; a double-click edits its text.
+  const pickable = (t) => !t.done && !state.pending;
   const list = h('ul', { class: 'tasks' }, tasks.map((t) =>
     h('li', {
-      class: 'task' + (t.done ? ' done' : ''), 'data-id': t.id,
+      class: 'task' + (t.done ? ' done' : '') + (pickable(t) ? ' pickable' : '') +
+        (pickable(t) && t.id === state.startTaskId ? ' selected' : ''),
+      'data-id': t.id,
+      onclick: (e) => {
+        if (!pickable(t) || e.target.closest('input[type="checkbox"], select, button, .handle')) return;
+        if (e.target.matches('input.text') && !e.target.readOnly) return;
+        pickTask(t.id);
+      },
       ondragstart: (e) => { e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); },
       ondragover: dragOver,
       ondragend: dragEnd,
@@ -252,13 +257,21 @@ function renderTasks() {
       h('input', { type: 'checkbox', checked: t.done, title: 'Done', onchange: (e) => updateTask(t.id, { done: e.target.checked }) }),
       tagPicker(t.tagId, (id) => updateTask(t.id, { tagId: id })),
       h('input', {
-        class: 'text', value: t.text,
+        class: 'text', value: t.text, readonly: true, title: 'Double-click to edit',
+        ondblclick: (e) => {
+          e.target.readOnly = false;
+          e.target.select();
+        },
+        onblur: (e) => { e.target.readOnly = true; },
         onchange: (e) => {
           const text = e.target.value.trim();
           if (!text) e.target.value = tasks.find((x) => x.id === t.id).text;
-          else updateTask(t.id, { text }, false);
+          else updateTask(t.id, { text });
         },
-        onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
+        onkeydown: (e) => {
+          if (e.key === 'Escape') e.target.value = tasks.find((x) => x.id === t.id).text;
+          if (e.key === 'Enter' || e.key === 'Escape') e.target.blur();
+        },
       }),
       h('button', { class: 'icon remove', title: 'Remove task', onclick: () => removeTask(t) }, '×'))));
 
@@ -313,6 +326,13 @@ function formatDuration(ms) {
 }
 
 // --- Today actions ---
+
+// Updates in place (no full render) so a double-click still reaches the same input.
+function pickTask(id) {
+  state.startTaskId = id;
+  for (const li of document.querySelectorAll('.tasks .task')) li.classList.toggle('selected', li.dataset.id === id);
+  document.getElementById('next-session')?.replaceWith(renderStartSession());
+}
 
 async function updateTask(id, patch, rerender = true) {
   const tasks = state.day.tasks;

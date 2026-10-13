@@ -145,18 +145,17 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 /* session panel */
 
 .session { border-left: 4px solid var(--tag, var(--line)); }
-.pick-list { margin: 0 -8px 14px; }
-.pick {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  text-align: left;
-  padding: 6px 8px;
-}
-.pick:hover { background: var(--bg); }
-.pick.selected { background: var(--line); }
-.start-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+.start-row { display: flex; gap: 10px; align-items: center; }
+.picked { flex: 1; min-width: 0; font-size: 17px; }
+.picked.muted { font-size: 15px; }
+
+.task.pickable { cursor: pointer; border-radius: 8px; }
+.task.pickable:hover { background: var(--card); }
+.task.selected { background: var(--line) !important; }
+.task .text[readonly] { cursor: inherit; }
+.task .text[readonly]:hover,
+.task .text[readonly]:focus { border-color: transparent !important; }
+.tasks .task { padding: 4px 6px; margin: 0 -6px; }
 .minutes { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .minutes input { width: 60px; text-align: right; }
 

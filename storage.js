@@ -73,7 +73,8 @@ export async function reorderTasks(date, taskIds) {
 }
 
 // Session: { id, taskId, taskText, tagId, minutes, startAt, endAt,
-//            outcome: null | 'done' | 'partial' | 'derailed', note }
+//            outcome: null | 'done' | 'partial' | 'derailed', note, endedEarly? }
+// endAt is the actual end time; minutes is the planned length.
 export async function saveSession(date, session) {
   const day = loadDay(date);
   upsert(day.sessions, session);

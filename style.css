@@ -8,17 +8,7 @@
   --done: #7aa58a;
   --partial: #c9a66b;
   --derailed: #c48888;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1d1e1f;
-    --card: #252628;
-    --text: #e3e1db;
-    --muted: #8d8b85;
-    --line: #34353a;
-    --accent: #8faac4;
-  }
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -90,7 +80,7 @@ h2 {
 
 ul { list-style: none; margin: 0; padding: 0; }
 
-input.text, input.note, select.task-select, .minutes input {
+input.text, input.note, .minutes input {
   border: 1px solid transparent;
   background: transparent;
   border-radius: 6px;
@@ -98,7 +88,7 @@ input.text, input.note, select.task-select, .minutes input {
   min-width: 0;
 }
 input.text:hover, input.text:focus,
-input.note, select.task-select, .minutes input {
+input.note, .minutes input {
   border-color: var(--line);
   outline: none;
 }
@@ -116,9 +106,19 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 .task.done .text { color: var(--muted); text-decoration: line-through; }
 .task input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0 2px; }
 
-.row-actions { display: flex; opacity: 0; transition: opacity 0.15s; }
-.task:hover .row-actions, .task:focus-within .row-actions { opacity: 1; }
 .icon { padding: 2px 7px; color: var(--muted); }
+.task .remove { opacity: 0.45; }
+.task:hover .remove, .task .remove:focus { opacity: 1; }
+
+.handle {
+  color: var(--muted);
+  cursor: grab;
+  padding: 0 2px;
+  opacity: 0.45;
+  user-select: none;
+}
+.task:hover .handle { opacity: 1; }
+.task.dragging { opacity: 0.4; }
 .icon:hover:not(:disabled) { color: var(--text); background: var(--line); }
 
 .task.add { margin-top: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
@@ -145,8 +145,18 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 /* session panel */
 
 .session { border-left: 4px solid var(--tag, var(--line)); }
-.start-row { display: flex; gap: 10px; align-items: center; }
-.task-select { flex: 1; min-width: 0; }
+.pick-list { margin: 0 -8px 14px; }
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+}
+.pick:hover { background: var(--bg); }
+.pick.selected { background: var(--line); }
+.start-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
 .minutes { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .minutes input { width: 60px; text-align: right; }
 
@@ -182,6 +192,10 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 .badge.done { color: var(--done); }
 .badge.partial { color: var(--partial); }
 .badge.derailed { color: var(--derailed); }
+.sessions + h2 { margin-top: 20px; }
+.sessions.troubled { opacity: 0.5; }
+.sessions.troubled .stext { color: var(--muted); }
+.early { color: var(--muted); font-size: 12px; flex-shrink: 0; }
 
 /* recent */
 

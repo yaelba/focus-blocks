@@ -189,23 +189,30 @@ function renderStartSession() {
   if (!open.length) {
     return h('section', { class: 'card session' }, h('p', { class: 'muted' }, 'All tasks done. Add one below to start another session.'));
   }
-  if (!open.some((t) => t.id === state.startTaskId)) state.startTaskId = open[0].id;
-
-  const select = h('select', { class: 'task-select', onchange: (e) => { state.startTaskId = e.target.value; } },
-    open.map((t) => h('option', { value: t.id }, t.text)));
-  select.value = state.startTaskId;
+  if (!open.some((t) => t.id === state.startTaskId)) state.startTaskId = null;
 
   return h('section', { class: 'card session' },
-    h('div', { class: 'label' }, 'Next session'),
+    h('div', { class: 'label' }, 'Next session — pick a task'),
+    h('ul', { class: 'pick-list' }, open.map((t) =>
+      h('li', {},
+        h('button', {
+          class: 'pick' + (t.id === state.startTaskId ? ' selected' : ''),
+          onclick: () => { state.startTaskId = t.id; render(); },
+        },
+          h('span', { class: 'dot', style: `background:${tagColor(t.tagId)}` }),
+          t.text)))),
     h('div', { class: 'start-row' },
-      select,
       h('label', { class: 'minutes' },
         h('input', {
-          type: 'number', min: 1, max: 240, value: state.startMinutes,
-          oninput: (e) => { state.startMinutes = Number(e.target.value) || DEFAULT_MINUTES; },
+          type: 'text', inputmode: 'numeric', maxlength: 3, value: state.startMinutes,
+          oninput: (e) => {
+            e.target.value = e.target.value.replace(/\D/g, '');
+            state.startMinutes = Number(e.target.value) || DEFAULT_MINUTES;
+          },
+          onkeydown: (e) => { if (e.key === 'Enter') startSession(); },
         }),
         'min'),
-      h('button', { class: 'primary', onclick: startSession }, 'Start')));
+      h('button', { class: 'primary', disabled: !state.startTaskId, onclick: startSession }, 'Start')));
 }
 
 function renderRunning(s) {
@@ -230,8 +237,18 @@ function renderOutcome(s) {
 
 function renderTasks() {
   const tasks = state.day.tasks;
-  const list = h('ul', { class: 'tasks' }, tasks.map((t, i) =>
-    h('li', { class: 'task' + (t.done ? ' done' : '') },
+  const list = h('ul', { class: 'tasks' }, tasks.map((t) =>
+    h('li', {
+      class: 'task' + (t.done ? ' done' : ''), 'data-id': t.id,
+      ondragstart: (e) => { e.dataTransfer.effectAllowed = 'move'; e.currentTarget.classList.add('dragging'); },
+      ondragover: dragOver,
+      ondragend: dragEnd,
+    },
+      h('span', {
+        class: 'handle', title: 'Drag to reorder',
+        onpointerdown: (e) => { e.target.closest('li').draggable = true; },
+        onpointerup: (e) => { e.target.closest('li').draggable = false; },
+      }, '⠿'),
       h('input', { type: 'checkbox', checked: t.done, title: 'Done', onchange: (e) => updateTask(t.id, { done: e.target.checked }) }),
       tagPicker(t.tagId, (id) => updateTask(t.id, { tagId: id })),
       h('input', {
@@ -243,10 +260,7 @@ function renderTasks() {
         },
         onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
       }),
-      h('span', { class: 'row-actions' },
-        h('button', { class: 'icon', title: 'Move up', disabled: i === 0, onclick: () => moveTask(i, -1) }, '↑'),
-        h('button', { class: 'icon', title: 'Move down', disabled: i === tasks.length - 1, onclick: () => moveTask(i, 1) }, '↓'),
-        h('button', { class: 'icon', title: 'Delete', onclick: () => removeTask(t) }, '×')))));
+      h('button', { class: 'icon remove', title: 'Remove task', onclick: () => removeTask(t) }, '×'))));
 
   if (!tagById(state.newTaskTagId)) {
     state.newTaskTagId = [...tasks].reverse().find((t) => tagById(t.tagId))?.tagId ?? state.tags[0]?.id ?? null;
@@ -271,16 +285,31 @@ function renderTasks() {
   return [list, add];
 }
 
+// Done and ran its full length.
+const succeeded = (s) => s.outcome === 'done' && !s.endedEarly;
+
 function renderSessions() {
   const sessions = state.day.sessions.filter((s) => s.outcome).sort((a, b) => a.startAt - b.startAt);
   if (!sessions.length) return h('p', { class: 'muted' }, 'No sessions yet.');
-  return h('ul', { class: 'sessions' }, sessions.map((s) =>
+  const good = sessions.filter(succeeded);
+  const troubled = sessions.filter((s) => !succeeded(s));
+  const row = (s) =>
     h('li', {},
       h('span', { class: 'time' }, clock(s.startAt)),
       h('span', { class: 'bar', style: `background:${tagColor(s.tagId)}` }),
       h('span', { class: 'stext' }, s.taskText, s.note && h('span', { class: 'note-text' }, ` — ${s.note}`)),
-      h('span', { class: 'mins' }, `${s.minutes} min`),
-      h('span', { class: `badge ${s.outcome}` }, OUTCOMES[s.outcome]))));
+      s.endedEarly && h('span', { class: 'early' }, 'ended early'),
+      h('span', { class: 'mins' }, formatDuration(s.endAt - s.startAt)),
+      h('span', { class: `badge ${s.outcome}` }, OUTCOMES[s.outcome]));
+  return [
+    good.length ? h('ul', { class: 'sessions' }, good.map(row)) : h('p', { class: 'muted' }, 'None completed yet.'),
+    troubled.length > 0 && [h('h2', {}, 'Cut short or not done'), h('ul', { class: 'sessions troubled' }, troubled.map(row))],
+  ];
+}
+
+function formatDuration(ms) {
+  const min = Math.round(ms / 60_000);
+  return min < 1 ? '<1 min' : `${min} min`;
 }
 
 // --- Today actions ---
@@ -293,9 +322,22 @@ async function updateTask(id, patch, rerender = true) {
   if (rerender) render();
 }
 
-async function moveTask(i, delta) {
-  const ids = state.day.tasks.map((t) => t.id);
-  [ids[i], ids[i + delta]] = [ids[i + delta], ids[i]];
+// Drag reordering: rows move live in the DOM; the order is saved on drop.
+function dragOver(e) {
+  const li = e.currentTarget;
+  const dragging = li.parentElement.querySelector('.dragging');
+  if (!dragging) return;
+  e.preventDefault();
+  if (dragging === li) return;
+  const r = li.getBoundingClientRect();
+  li.parentElement.insertBefore(dragging, e.clientY < r.top + r.height / 2 ? li : li.nextSibling);
+}
+
+async function dragEnd(e) {
+  const li = e.currentTarget;
+  li.draggable = false;
+  li.classList.remove('dragging');
+  const ids = [...li.parentElement.children].map((x) => x.dataset.id);
   await store.reorderTasks(state.date, ids);
   await reloadDay();
   render();
@@ -330,7 +372,7 @@ async function startSession() {
 // Ends the session early (no chime): endAt becomes the actual end time.
 async function endNow() {
   const { date, session } = state.pending;
-  const ended = { ...session, endAt: Date.now() };
+  const ended = { ...session, endAt: Date.now(), endedEarly: true };
   await store.saveSession(date, ended);
   state.pending = { date, session: ended };
   alertedId = ended.id;
@@ -453,8 +495,8 @@ function renderRecent() {
           done.length
             ? done.map((s) => h('span', {
                 class: 'chunk',
-                style: `background:${tagColor(s.tagId)};width:${Math.max(10, s.minutes * 3)}px`,
-                title: `${clock(s.startAt)} · ${s.taskText} · ${s.minutes} min`,
+                style: `background:${tagColor(s.tagId)};width:${Math.max(10, ((s.endAt - s.startAt) / 60_000) * 3)}px`,
+                title: `${clock(s.startAt)} · ${s.taskText} · ${formatDuration(s.endAt - s.startAt)}`,
               }))
             : h('span', { class: 'muted' }, '—')));
     })));

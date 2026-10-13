@@ -72,12 +72,17 @@ export async function reorderTasks(date, taskIds) {
   write(dayKey(date), day);
 }
 
-// Session: { id, taskId, taskText, tagId, minutes, startAt, endAt,
-//            outcome: null | 'done' | 'partial' | 'derailed', note, endedEarly? }
-// endAt is the actual end time; minutes is the planned length.
+// Session: { id, taskId, taskText, tagId, minutes, startAt, endAt, outcome: null | 'done', note }
+// Saved when it starts (so a reload can resume it); deleted if it ends early or strays.
 export async function saveSession(date, session) {
   const day = loadDay(date);
   upsert(day.sessions, session);
+  write(dayKey(date), day);
+}
+
+export async function deleteSession(date, sessionId) {
+  const day = loadDay(date);
+  day.sessions = day.sessions.filter((s) => s.id !== sessionId);
   write(dayKey(date), day);
 }
 

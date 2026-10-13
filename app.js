@@ -2,7 +2,6 @@ import * as store from './storage.js';
 import { todayStr, addDays, dayLabel, clock } from './dates.js';
 
 const PALETTE = ['#7d9cc0', '#8db59a', '#d3a477', '#c58ca0', '#a69bcb', '#86b4b4', '#c8b66e', '#a7a29a'];
-const OUTCOMES = { done: 'Done', partial: 'Partial', derailed: 'Derailed' };
 const RECENT_DAYS = 7;
 const DEFAULT_MINUTES = 10;
 
@@ -224,11 +223,12 @@ function renderRunning(s) {
 function renderOutcome(s) {
   const note = h('input', { class: 'note', placeholder: 'Short note (optional)', maxlength: 140 });
   return h('section', { class: 'card session ended', style: `--tag:${tagColor(s.tagId)}` },
-    h('div', { class: 'label' }, 'Session over — how did it go?'),
+    h('div', { class: 'label' }, 'Time’s up — how did it go?'),
     h('div', { class: 'session-task' }, s.taskText),
     note,
-    h('div', { class: 'outcomes' }, Object.entries(OUTCOMES).map(([key, label]) =>
-      h('button', { class: `outcome ${key}`, onclick: () => saveOutcome(key, note.value.trim()) }, label))));
+    h('div', { class: 'outcomes' },
+      h('button', { class: 'outcome done', onclick: () => markDone(note.value.trim()) }, 'Done'),
+      h('button', { class: 'outcome strayed', onclick: discardSession }, 'Strayed')));
 }
 
 function renderTasks() {
@@ -298,31 +298,20 @@ function renderTasks() {
   return [list, add];
 }
 
-// Done and ran its full length.
-const succeeded = (s) => s.outcome === 'done' && !s.endedEarly;
+// Only sessions that ran their full length and were marked done are kept.
+// (The outcome check also filters out data saved by older versions of the app.)
+const completed = (sessions) =>
+  sessions.filter((s) => s.outcome === 'done' && !s.endedEarly).sort((a, b) => a.startAt - b.startAt);
 
 function renderSessions() {
-  const sessions = state.day.sessions.filter((s) => s.outcome).sort((a, b) => a.startAt - b.startAt);
-  if (!sessions.length) return h('p', { class: 'muted' }, 'No sessions yet.');
-  const good = sessions.filter(succeeded);
-  const troubled = sessions.filter((s) => !succeeded(s));
-  const row = (s) =>
+  const sessions = completed(state.day.sessions);
+  if (!sessions.length) return h('p', { class: 'muted' }, 'No completed sessions yet.');
+  return h('ul', { class: 'sessions' }, sessions.map((s) =>
     h('li', {},
       h('span', { class: 'time' }, clock(s.startAt)),
       h('span', { class: 'bar', style: `background:${tagColor(s.tagId)}` }),
       h('span', { class: 'stext' }, s.taskText, s.note && h('span', { class: 'note-text' }, ` — ${s.note}`)),
-      s.endedEarly && h('span', { class: 'early' }, 'ended early'),
-      h('span', { class: 'mins' }, formatDuration(s.endAt - s.startAt)),
-      h('span', { class: `badge ${s.outcome}` }, OUTCOMES[s.outcome]));
-  return [
-    good.length ? h('ul', { class: 'sessions' }, good.map(row)) : h('p', { class: 'muted' }, 'None completed yet.'),
-    troubled.length > 0 && [h('h2', {}, 'Cut short or not done'), h('ul', { class: 'sessions troubled' }, troubled.map(row))],
-  ];
-}
-
-function formatDuration(ms) {
-  const min = Math.round(ms / 60_000);
-  return min < 1 ? '<1 min' : `${min} min`;
+      h('span', { class: 'mins' }, `${s.minutes} min`))));
 }
 
 // --- Today actions ---
@@ -389,25 +378,24 @@ async function startSession() {
   render();
 }
 
-// Ends the session early (no chime): endAt becomes the actual end time.
-async function endNow() {
+// Stopping early or straying: the session isn't recorded and its task stays open.
+async function discardSession() {
   const { date, session } = state.pending;
-  const ended = { ...session, endAt: Date.now(), endedEarly: true };
-  await store.saveSession(date, ended);
-  state.pending = { date, session: ended };
-  alertedId = ended.id;
+  await store.deleteSession(date, session.id);
+  state.startTaskId = session.taskId;
+  state.pending = null;
+  await reloadDay();
   syncTimers();
-  if (date === state.date) await reloadDay();
   render();
 }
 
-async function saveOutcome(outcome, note) {
+const endNow = discardSession;
+
+async function markDone(note) {
   const { date, session } = state.pending;
-  await store.saveSession(date, { ...session, outcome, note });
-  if (outcome === 'done') {
-    const task = (await store.getDay(date)).tasks.find((t) => t.id === session.taskId);
-    if (task) await store.saveTask(date, { ...task, done: true });
-  }
+  await store.saveSession(date, { ...session, outcome: 'done', note });
+  const task = (await store.getDay(date)).tasks.find((t) => t.id === session.taskId);
+  if (task) await store.saveTask(date, { ...task, done: true });
   state.pending = null;
   await reloadDay();
   syncTimers();
@@ -508,15 +496,15 @@ function renderRecent() {
   return h('section', { class: 'card recent' },
     h('p', { class: 'muted' }, 'Completed sessions from the last few days.'),
     h('ul', { class: 'days' }, state.recent.map((day) => {
-      const done = day.sessions.filter((s) => s.outcome === 'done').sort((a, b) => a.startAt - b.startAt);
+      const done = completed(day.sessions);
       return h('li', {},
         h('span', { class: 'day-label' }, dayLabel(day.date)),
         h('span', { class: 'blocks' },
           done.length
             ? done.map((s) => h('span', {
                 class: 'chunk',
-                style: `background:${tagColor(s.tagId)};width:${Math.max(10, ((s.endAt - s.startAt) / 60_000) * 3)}px`,
-                title: `${clock(s.startAt)} · ${s.taskText} · ${formatDuration(s.endAt - s.startAt)}`,
+                style: `background:${tagColor(s.tagId)};width:${Math.max(10, s.minutes * 3)}px`,
+                title: `${clock(s.startAt)} · ${s.taskText} · ${s.minutes} min`,
               }))
             : h('span', { class: 'muted' }, '—')));
     })));

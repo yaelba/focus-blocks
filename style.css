@@ -103,10 +103,9 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 }
 .task .text { flex: 1; }
 .task.done .text { color: var(--muted); text-decoration: line-through; }
-.task input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0 2px; }
 
 .icon { padding: 2px 7px; color: var(--muted); }
-.task .remove { opacity: 0.45; }
+.task .remove { opacity: 0.45; display: inline-flex; padding: 4px 6px; }
 .task:hover .remove, .task .remove:focus { opacity: 1; }
 
 .handle {

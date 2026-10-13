@@ -133,7 +133,7 @@ function renderToday() {
   return h('div', {},
     renderSessionPanel(),
     section('Tasks', renderTasks()),
-    section('Sessions', renderSessions()));
+    section('Completed sessions', renderSessions()));
 }
 
 function renderStartOfDay() {
@@ -217,7 +217,7 @@ function renderRunning(s) {
     h('div', { class: 'remaining', id: 'remaining' }, formatLeft(s.endAt - Date.now())),
     h('div', { class: 'running-foot' },
       h('span', { class: 'muted' }, `${s.minutes} min · ends ${clock(s.endAt)}`),
-      h('button', { class: 'quiet', onclick: endNow }, 'End now')));
+      h('button', { class: 'quiet', onclick: discardSession }, 'Quit midway')));
 }
 
 function renderOutcome(s) {
@@ -242,7 +242,7 @@ function renderTasks() {
         (pickable(t) && t.id === state.startTaskId ? ' selected' : ''),
       'data-id': t.id,
       onclick: (e) => {
-        if (!pickable(t) || e.target.closest('input[type="checkbox"], select, button, .handle')) return;
+        if (!pickable(t) || e.target.closest('select, button, .handle')) return;
         if (e.target.matches('input.text') && !e.target.readOnly) return;
         pickTask(t.id);
       },
@@ -255,7 +255,6 @@ function renderTasks() {
         onpointerdown: (e) => { e.target.closest('li').draggable = true; },
         onpointerup: (e) => { e.target.closest('li').draggable = false; },
       }, '⠿'),
-      h('input', { type: 'checkbox', checked: t.done, title: 'Done', onchange: (e) => updateTask(t.id, { done: e.target.checked }) }),
       tagPicker(t.tagId, (id) => updateTask(t.id, { tagId: id })),
       h('input', {
         class: 'text', value: t.text, readonly: true, title: 'Double-click to edit',
@@ -274,7 +273,7 @@ function renderTasks() {
           if (e.key === 'Enter' || e.key === 'Escape') e.target.blur();
         },
       }),
-      h('button', { class: 'icon remove', title: 'Remove task', onclick: () => removeTask(t) }, '×'))));
+      trashButton('Delete task', () => removeTask(t)))));
 
   if (!tagById(state.newTaskTagId)) {
     state.newTaskTagId = [...tasks].reverse().find((t) => tagById(t.tagId))?.tagId ?? state.tags[0]?.id ?? null;
@@ -316,6 +315,15 @@ function renderSessions() {
 }
 
 // --- Today actions ---
+
+const TRASH_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" ' +
+  'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4h11M6.5 4V2.5h3V4M4 4l.7 9.5h6.6L12 4M6.8 6.5v4.5M9.2 6.5v4.5"/></svg>';
+
+function trashButton(title, onclick) {
+  const btn = h('button', { class: 'icon remove', title, 'aria-label': title, onclick });
+  btn.innerHTML = TRASH_SVG;
+  return btn;
+}
 
 // Updates in place (no full render) so a double-click still reaches the same input.
 function pickTask(id) {
@@ -390,7 +398,6 @@ async function discardSession() {
   render();
 }
 
-const endNow = discardSession;
 
 async function markDone(note) {
   const { date, session } = state.pending;

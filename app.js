@@ -213,13 +213,15 @@ function renderRunning(s) {
     h('div', { class: 'label' }, 'Focusing on'),
     h('div', { class: 'session-task' }, s.taskText),
     h('div', { class: 'remaining', id: 'remaining' }, formatLeft(s.endAt - Date.now())),
-    h('div', { class: 'muted' }, `${s.minutes} min · ends ${clock(s.endAt)}`));
+    h('div', { class: 'running-foot' },
+      h('span', { class: 'muted' }, `${s.minutes} min · ends ${clock(s.endAt)}`),
+      h('button', { class: 'quiet', onclick: endNow }, 'End now')));
 }
 
 function renderOutcome(s) {
   const note = h('input', { class: 'note', placeholder: 'Short note (optional)', maxlength: 140 });
   return h('section', { class: 'card session ended', style: `--tag:${tagColor(s.tagId)}` },
-    h('div', { class: 'label' }, 'Time’s up — how did it go?'),
+    h('div', { class: 'label' }, 'Session over — how did it go?'),
     h('div', { class: 'session-task' }, s.taskText),
     note,
     h('div', { class: 'outcomes' }, Object.entries(OUTCOMES).map(([key, label]) =>
@@ -246,7 +248,9 @@ function renderTasks() {
         h('button', { class: 'icon', title: 'Move down', disabled: i === tasks.length - 1, onclick: () => moveTask(i, 1) }, '↓'),
         h('button', { class: 'icon', title: 'Delete', onclick: () => removeTask(t) }, '×')))));
 
-  if (!tagById(state.newTaskTagId)) state.newTaskTagId = tasks.at(-1)?.tagId ?? state.tags[0]?.id ?? null;
+  if (!tagById(state.newTaskTagId)) {
+    state.newTaskTagId = [...tasks].reverse().find((t) => tagById(t.tagId))?.tagId ?? state.tags[0]?.id ?? null;
+  }
   const add = h('form', {
     class: 'task add',
     onsubmit: async (e) => {
@@ -320,6 +324,18 @@ async function startSession() {
   await reloadDay();
   state.pending = { date: state.date, session };
   syncTimers();
+  render();
+}
+
+// Ends the session early (no chime): endAt becomes the actual end time.
+async function endNow() {
+  const { date, session } = state.pending;
+  const ended = { ...session, endAt: Date.now() };
+  await store.saveSession(date, ended);
+  state.pending = { date, session: ended };
+  alertedId = ended.id;
+  syncTimers();
+  if (date === state.date) await reloadDay();
   render();
 }
 
@@ -465,9 +481,17 @@ function renderTags() {
                 else e.target.value = state.tags.find((x) => x.id === t.id).name;
               },
               onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); },
-            }))))
+            }),
+            h('button', { class: 'icon', title: 'Delete', onclick: () => removeTag(t) }, '×'))))
       : h('p', { class: 'muted' }, 'No tags yet.'),
     h('button', { class: 'quiet', onclick: async () => { if (await createTagPrompt()) render(); } }, '+ New tag'));
+}
+
+async function removeTag(tag) {
+  if (!confirm(`Delete tag “${tag.name}”? Tasks and sessions using it will turn gray.`)) return;
+  await store.deleteTag(tag.id);
+  state.tags = state.tags.filter((t) => t.id !== tag.id);
+  render();
 }
 
 // --- day rollover ---

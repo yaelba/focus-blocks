@@ -42,6 +42,10 @@ export async function saveTag(tag) {
   write(TAGS_KEY, tags);
 }
 
+export async function deleteTag(tagId) {
+  write(TAGS_KEY, read(TAGS_KEY, []).filter((t) => t.id !== tagId));
+}
+
 // --- Days: { date: 'YYYY-MM-DD', tasks: [...], sessions: [...] } ---
 
 export async function getDay(date) {

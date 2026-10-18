@@ -196,7 +196,7 @@ function renderStartOfDay() {
 
 function renderSessionPanel() {
   const p = state.pending;
-  if (p && p.session.endAt > Date.now()) return renderRunning(p.session);
+  if (p && !p.ended && p.session.endAt > Date.now()) return renderRunning(p.session);
   if (p) return renderOutcome(p.session);
   return renderStartSession();
 }
@@ -457,7 +457,7 @@ function tick() {
     return;
   }
   const left = s.endAt - Date.now();
-  if (left <= 0) {
+  if (state.pending.ended || left <= 0) {
     document.title = 'Time’s up · Focus';
     if (document.getElementById('remaining')) onTimeUp(s);
     return;
@@ -469,13 +469,8 @@ function tick() {
 }
 
 function onTimeUp(s) {
-  // setTimeout can fire a few ms before endAt by Date.now(); try again rather than
-  // rendering the running card with no interval left to finish it.
-  const left = s.endAt - Date.now();
-  if (left > 0) {
-    alarmTimeout = setTimeout(() => onTimeUp(s), left + 20);
-    return;
-  }
+  // The alarm may fire a few ms before endAt; it still counts as the end.
+  if (state.pending?.session.id === s.id) state.pending.ended = true;
   clearInterval(tickInterval);
   if (alertedId !== s.id) {
     alertedId = s.id;

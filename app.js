@@ -538,7 +538,16 @@ function renderArchive() {
           h('li', { class: t.done ? 'done' : '' },
             h('span', { class: 'mark', title: t.done ? 'Completed' : 'Not completed' }, t.done ? '✓' : ''),
             h('span', { class: 'dot', style: `background:${tagColor(t.tagId)}` }),
-            t.text))))));
+            h('span', { class: 'archive-text' }, t.text),
+            trashButton('Delete from archive', () => removeArchivedTask(day.date, t))))))));
+}
+
+// Removes only the task; completed sessions keep their own copy of its text.
+async function removeArchivedTask(date, task) {
+  if (!confirm(`Delete “${task.text}” from the archive?`)) return;
+  await store.deleteTask(date, task.id);
+  state.archive = await store.listPastDays(state.date);
+  render();
 }
 
 // --- Tags ---

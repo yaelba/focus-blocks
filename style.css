@@ -222,5 +222,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 
 .archive-day + .archive-day { margin-top: 22px; }
 .archive li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
-.archive .mark, .archive .dot { user-select: none; flex-shrink: 0; }
+.archive .mark, .archive .dot, .archive .remove { user-select: none; flex-shrink: 0; }
+.archive-text { flex: 1; min-width: 0; }
+.archive .remove { opacity: 0.45; display: inline-flex; padding: 4px 6px; }
+.archive li:hover .remove, .archive .remove:focus { opacity: 1; }
 .archive .mark { width: 14px; color: var(--done); font-size: 13px; }

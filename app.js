@@ -202,7 +202,7 @@ function renderSessionPanel() {
 }
 
 function renderStartSession() {
-  const open = state.day.tasks.filter((t) => !t.done);
+  const open = state.day.tasks.filter(listed);
   if (!open.length) {
     return h('section', { class: 'card session' }, h('p', { class: 'muted' }, 'All tasks done. Add one below to start another session.'));
   }
@@ -251,9 +251,9 @@ function renderOutcome(s) {
 
 function renderTasks() {
   // Finished tasks are hidden; they show up in the sessions list instead.
-  const tasks = state.day.tasks.filter((t) => !t.done);
+  const tasks = state.day.tasks.filter(listed);
   // A single click picks the task for the next session; a double-click edits its text.
-  const pickable = (t) => !t.done && !state.pending;
+  const pickable = (t) => listed(t) && !state.pending;
   const list = h('ul', { class: 'tasks' }, tasks.map((t) =>
     h('li', {
       class: 'task' + (t.done ? ' done' : '') + (pickable(t) ? ' pickable' : '') +
@@ -316,6 +316,10 @@ function renderTasks() {
 
   return [tasks.length ? list : h('p', { class: 'muted' }, 'Nothing left. Add a task below.'), add];
 }
+
+// Removed tasks are kept (hidden) so the archive still shows them.
+// `done` comes from older versions of the app, which ticked a task on Done.
+const listed = (t) => !t.done && !t.removed;
 
 // Only sessions that ran their full length and were marked done are kept.
 // (The outcome check also filters out data saved by older versions of the app.)
@@ -382,7 +386,7 @@ async function dragEnd(e) {
 
 async function removeTask(task) {
   if (!confirm(`Delete “${task.text}”?`)) return;
-  await store.deleteTask(state.date, task.id);
+  await store.saveTask(state.date, { ...task, removed: true });
   await reloadDay();
   render();
 }
@@ -537,6 +541,23 @@ function renderRecent() {
 
 // --- Archive: past days' tasks as plain text, for copy-pasting ---
 
+// One entry per distinct task text in a day (re-added tasks count once), with
+// the minutes of completed sessions on any of its copies.
+function archiveEntries(day) {
+  const groups = new Map();
+  for (const t of day.tasks) {
+    const key = t.text.trim().toLowerCase();
+    if (!groups.has(key)) groups.set(key, { text: t.text, tagId: t.tagId, ids: [], minutes: 0 });
+    groups.get(key).ids.push(t.id);
+  }
+  const groupOf = new Map([...groups.values()].flatMap((g) => g.ids.map((id) => [id, g])));
+  for (const s of completed(day.sessions)) {
+    const g = groupOf.get(s.taskId);
+    if (g) g.minutes += s.minutes;
+  }
+  return [...groups.values()];
+}
+
 function renderArchive() {
   if (!state.archive.length) {
     return h('section', { class: 'card' }, h('p', { class: 'muted' }, 'No tasks from earlier days yet.'));
@@ -545,18 +566,18 @@ function renderArchive() {
     state.archive.map((day) =>
       h('div', { class: 'archive-day' },
         h('h2', {}, dayLabel(day.date)),
-        h('ul', {}, day.tasks.map((t) =>
-          h('li', { class: t.done ? 'done' : '' },
-            h('span', { class: 'mark', title: t.done ? 'Completed' : 'Not completed' }, t.done ? '✓' : ''),
-            h('span', { class: 'dot', style: `background:${tagColor(t.tagId)}` }),
-            h('span', { class: 'archive-text' }, t.text),
-            trashButton('Delete from archive', () => removeArchivedTask(day.date, t))))))));
+        h('ul', {}, archiveEntries(day).map((e) =>
+          h('li', {},
+            h('span', { class: 'dot', style: `background:${tagColor(e.tagId)}` }),
+            h('span', { class: 'archive-text' }, e.text),
+            h('span', { class: 'mins' + (e.minutes ? '' : ' none') }, `${e.minutes} min`),
+            trashButton('Delete from archive', () => removeArchivedTask(day.date, e))))))));
 }
 
-// Removes only the task; completed sessions keep their own copy of its text.
-async function removeArchivedTask(date, task) {
-  if (!confirm(`Delete “${task.text}” from the archive?`)) return;
-  await store.deleteTask(date, task.id);
+// Removes the task (all its copies); completed sessions keep their own copy of its text.
+async function removeArchivedTask(date, entry) {
+  if (!confirm(`Delete “${entry.text}” from the archive?`)) return;
+  for (const id of entry.ids) await store.deleteTask(date, id);
   state.archive = await store.listPastDays(state.date);
   render();
 }

@@ -52,7 +52,7 @@ export async function getDay(date) {
   return loadDay(date);
 }
 
-// Task: { id, text, tagId, done }
+// Task: { id, text, tagId, removed } — removed tasks stay stored for the archive. (`done` is legacy.)
 export async function saveTask(date, task) {
   const day = loadDay(date);
   upsert(day.tasks, task);

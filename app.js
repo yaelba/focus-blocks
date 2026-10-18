@@ -18,6 +18,7 @@ const state = {
   startTaskId: null,
   startMinutes: DEFAULT_MINUTES,
   newTaskTagId: null,
+  newTaskText: '',
   draft: null, // start-of-day rows: [{ text, tagId }]
   focus: null, // element id to focus after the next render
 };
@@ -305,13 +306,18 @@ function renderTasks() {
       const text = input.value.trim();
       if (!text || !tagById(state.newTaskTagId)) return;
       await store.saveTask(state.date, { id: uid(), text, tagId: state.newTaskTagId, done: false });
+      state.newTaskText = '';
       await reloadDay();
       state.focus = 'new-task';
       render();
     },
   },
-    tagPicker(state.newTaskTagId, (id) => { state.newTaskTagId = id; render(); }),
-    h('input', { id: 'new-task', name: 'text', class: 'text', placeholder: 'Add a task' }),
+    tagPicker(state.newTaskTagId, (id) => { state.newTaskTagId = id; state.focus = 'new-task'; render(); }),
+    // Kept in state so re-rendering (e.g. after picking a tag) doesn't wipe it.
+    h('input', {
+      id: 'new-task', name: 'text', class: 'text', placeholder: 'Add a task',
+      value: state.newTaskText, oninput: (e) => { state.newTaskText = e.target.value; },
+    }),
     h('button', { class: 'quiet' }, 'Add'));
 
   return [tasks.length ? list : h('p', { class: 'muted' }, 'Nothing left. Add a task below.'), add];

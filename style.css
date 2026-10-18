@@ -158,7 +158,9 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 /* session panel */
 
 .session {
-  background: color-mix(in srgb, var(--tag, var(--accent)) 7%, white);
+  background: color-mix(in srgb, var(--tag, var(--accent)) 13%, white);
+  border: 2px solid color-mix(in srgb, var(--tag, var(--accent)) 55%, white);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--tag, var(--accent)) 22%, transparent);
 }
 .running .remaining { color: color-mix(in srgb, var(--tag) 60%, var(--text)); }
 .start-row { display: flex; gap: 10px; align-items: center; }
@@ -167,7 +169,7 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 
 .task.pickable { cursor: pointer; }
 .tasks .task { border-radius: 8px; }
-.task.pickable:hover { background: var(--card); }
+.task.pickable:hover { background: var(--bg); }
 .task.selected { background: color-mix(in srgb, var(--tag) 20%, white) !important; }
 .task .text[readonly] { cursor: inherit; }
 .task .text[readonly]:hover,

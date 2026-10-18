@@ -112,7 +112,7 @@ async function show(view) {
 }
 
 function section(title, ...body) {
-  return h('section', { class: 'block' }, h('h2', {}, title), body);
+  return h('section', { class: 'card' }, h('h2', {}, title), body);
 }
 
 function tagPicker(value, onPick) {

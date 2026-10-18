@@ -469,6 +469,13 @@ function tick() {
 }
 
 function onTimeUp(s) {
+  // setTimeout can fire a few ms before endAt by Date.now(); try again rather than
+  // rendering the running card with no interval left to finish it.
+  const left = s.endAt - Date.now();
+  if (left > 0) {
+    alarmTimeout = setTimeout(() => onTimeUp(s), left + 20);
+    return;
+  }
   clearInterval(tickInterval);
   if (alertedId !== s.id) {
     alertedId = s.id;

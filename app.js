@@ -1,7 +1,9 @@
 import * as store from './storage.js';
 import { todayStr, addDays, dayLabel, clock } from './dates.js';
 
-const PALETTE = ['#7d9cc0', '#8db59a', '#d3a477', '#c58ca0', '#a69bcb', '#86b4b4', '#c8b66e', '#a7a29a'];
+const PALETTE = ['#3d7cc9', '#3a9a68', '#e0892f', '#d2527f', '#7b5cc8', '#25999b', '#c9a227', '#7c776d'];
+// Earlier default colors, swapped for their brighter counterparts on load.
+const OLD_PALETTE = ['#7d9cc0', '#8db59a', '#d3a477', '#c58ca0', '#a69bcb', '#86b4b4', '#c8b66e', '#a7a29a'];
 const RECENT_DAYS = 7;
 const DEFAULT_MINUTES = 10;
 
@@ -41,17 +43,27 @@ function h(tag, props = {}, ...children) {
 }
 
 const tagById = (id) => state.tags.find((t) => t.id === id);
-const tagColor = (id) => tagById(id)?.color ?? '#c9c6bf';
+const tagColor = (id) => tagById(id)?.color ?? '#a9a59b';
 
 // --- loading ---
 
 async function load() {
   state.date = todayStr();
   [state.tags, state.day] = await Promise.all([store.listTags(), store.getDay(state.date)]);
+  await upgradeTagColors();
   state.pending = await findPending();
   await loadViewData();
   syncTimers();
   render();
+}
+
+async function upgradeTagColors() {
+  for (const tag of state.tags) {
+    const i = OLD_PALETTE.indexOf(tag.color);
+    if (i === -1) continue;
+    tag.color = PALETTE[i];
+    await store.saveTag(tag);
+  }
 }
 
 // A session started late yesterday may still be waiting for its outcome.
@@ -118,7 +130,7 @@ function tagPicker(value, onPick) {
     state.tags.map((t) => h('option', { value: t.id }, t.name)),
     h('option', { value: '__new' }, '+ New tag…'));
   select.value = tag ? value : '';
-  return h('span', { class: 'tag-pick' },
+  return h('span', { class: 'tag-pick', style: tag && `--tag:${tag.color}` },
     h('span', { class: 'dot', style: `background:${tag ? tag.color : 'transparent'}` }),
     select);
 }
@@ -247,6 +259,7 @@ function renderTasks() {
       class: 'task' + (t.done ? ' done' : '') + (pickable(t) ? ' pickable' : '') +
         (pickable(t) && t.id === state.startTaskId ? ' selected' : ''),
       'data-id': t.id,
+      style: `--tag:${tagColor(t.tagId)}`,
       onclick: (e) => {
         if (!pickable(t) || e.target.closest('select, button, .handle')) return;
         if (e.target.matches('input.text') && !e.target.readOnly) return;
@@ -313,7 +326,7 @@ function renderSessions() {
   const sessions = completed(state.day.sessions);
   if (!sessions.length) return h('p', { class: 'muted' }, 'No completed sessions yet.');
   return h('ul', { class: 'sessions' }, sessions.map((s) =>
-    h('li', {},
+    h('li', { style: `--tag:${tagColor(s.tagId)}` },
       h('span', { class: 'time' }, clock(s.startAt)),
       h('span', { class: 'bar', style: `background:${tagColor(s.tagId)}` }),
       h('span', { class: 'stext' }, s.taskText, s.note && h('span', { class: 'note-text' }, ` — ${s.note}`)),

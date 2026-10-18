@@ -158,7 +158,6 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 /* session panel */
 
 .session {
-  border-left: 5px solid var(--tag, var(--accent));
   background: color-mix(in srgb, var(--tag, var(--accent)) 7%, white);
 }
 .running .remaining { color: color-mix(in srgb, var(--tag) 60%, var(--text)); }
@@ -167,7 +166,7 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 .picked.muted { font-size: 15px; }
 
 .task.pickable { cursor: pointer; }
-.tasks .task { border-left: 3px solid var(--tag); border-radius: 0 8px 8px 0; }
+.tasks .task { border-radius: 8px; }
 .task.pickable:hover { background: var(--card); }
 .task.selected { background: color-mix(in srgb, var(--tag) 20%, white) !important; }
 .task .text[readonly] { cursor: inherit; }

@@ -421,8 +421,6 @@ async function discardSession() {
 async function markDone(note) {
   const { date, session } = state.pending;
   await store.saveSession(date, { ...session, outcome: 'done', note });
-  const task = (await store.getDay(date)).tasks.find((t) => t.id === session.taskId);
-  if (task) await store.saveTask(date, { ...task, done: true });
   state.pending = null;
   await reloadDay();
   syncTimers();

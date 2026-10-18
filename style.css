@@ -217,3 +217,10 @@ input[type="color"] {
 input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
 input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .tags-view > .quiet { margin-top: 10px; }
+
+/* archive */
+
+.archive-day + .archive-day { margin-top: 22px; }
+.archive li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.archive .mark, .archive .dot { user-select: none; flex-shrink: 0; }
+.archive .mark { width: 14px; color: var(--done); font-size: 13px; }

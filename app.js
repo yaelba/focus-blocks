@@ -11,6 +11,7 @@ const state = {
   tags: [],
   day: null,
   recent: [],
+  archive: [],
   pending: null, // { date, session } for a session without an outcome yet
   startTaskId: null,
   startMinutes: DEFAULT_MINUTES,
@@ -48,7 +49,7 @@ async function load() {
   state.date = todayStr();
   [state.tags, state.day] = await Promise.all([store.listTags(), store.getDay(state.date)]);
   state.pending = await findPending();
-  if (state.view === 'recent') state.recent = await store.listRecentDays(state.date, RECENT_DAYS);
+  await loadViewData();
   syncTimers();
   render();
 }
@@ -70,7 +71,7 @@ async function reloadDay() {
 // --- rendering ---
 
 function render() {
-  const views = { today: renderToday, recent: renderRecent, tags: renderTags };
+  const views = { today: renderToday, recent: renderRecent, tags: renderTags, archive: renderArchive };
   app.replaceChildren(renderHeader(), views[state.view]());
   if (state.focus) {
     document.getElementById(state.focus)?.focus();
@@ -84,12 +85,17 @@ function renderHeader() {
     h('button', { class: 'tab' + (state.view === view ? ' active' : ''), onclick: () => show(view) }, label);
   return h('header', {},
     h('div', { class: 'date' }, dayLabel(state.date)),
-    h('nav', {}, tab('today', 'Today'), tab('recent', 'Recent'), tab('tags', 'Tags')));
+    h('nav', {}, tab('today', 'Today'), tab('recent', 'Recent'), tab('tags', 'Tags'), tab('archive', 'Archive')));
+}
+
+async function loadViewData() {
+  if (state.view === 'recent') state.recent = await store.listRecentDays(state.date, RECENT_DAYS);
+  if (state.view === 'archive') state.archive = await store.listPastDays(state.date);
 }
 
 async function show(view) {
   state.view = view;
-  if (view === 'recent') state.recent = await store.listRecentDays(state.date, RECENT_DAYS);
+  await loadViewData();
   render();
 }
 
@@ -516,6 +522,23 @@ function renderRecent() {
               }))
             : h('span', { class: 'muted' }, '—')));
     })));
+}
+
+// --- Archive: past days' tasks as plain text, for copy-pasting ---
+
+function renderArchive() {
+  if (!state.archive.length) {
+    return h('section', { class: 'card' }, h('p', { class: 'muted' }, 'No tasks from earlier days yet.'));
+  }
+  return h('section', { class: 'card archive' },
+    state.archive.map((day) =>
+      h('div', { class: 'archive-day' },
+        h('h2', {}, dayLabel(day.date)),
+        h('ul', {}, day.tasks.map((t) =>
+          h('li', { class: t.done ? 'done' : '' },
+            h('span', { class: 'mark', title: t.done ? 'Completed' : 'Not completed' }, t.done ? '✓' : ''),
+            h('span', { class: 'dot', style: `background:${tagColor(t.tagId)}` }),
+            t.text))))));
 }
 
 // --- Tags ---

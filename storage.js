@@ -88,6 +88,18 @@ export async function deleteSession(date, sessionId) {
   write(dayKey(date), day);
 }
 
+// Every stored day before `beforeDate` that has tasks, newest first.
+export async function listPastDays(beforeDate) {
+  const days = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key.startsWith(PREFIX + 'day.')) continue;
+    const day = read(key, null);
+    if (day && day.date < beforeDate && day.tasks.length) days.push(day);
+  }
+  return days.sort((a, b) => b.date.localeCompare(a.date));
+}
+
 // The `count` days before `beforeDate`, newest first (empty days included).
 export async function listRecentDays(beforeDate, count) {
   const days = [];

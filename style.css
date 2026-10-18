@@ -159,7 +159,6 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 
 .session {
   background: color-mix(in srgb, var(--tag, var(--accent)) 13%, white);
-  border: 2px solid color-mix(in srgb, var(--tag, var(--accent)) 55%, white);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--tag, var(--accent)) 22%, transparent);
 }
 .running .remaining { color: color-mix(in srgb, var(--tag) 60%, var(--text)); }

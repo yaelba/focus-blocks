@@ -1,5 +1,5 @@
 :root {
-  --bg: #f9cd98;
+  --bg: #e9a66a;
   --card: #ffffff;
   --text: #1f1e1b;
   --muted: #6b675e;
@@ -48,7 +48,7 @@ button {
 }
 button:disabled { opacity: 0.35; cursor: default; }
 
-.tab { color: var(--muted); }
+.tab { color: #4a3a2c; }
 .tab:hover { color: var(--text); }
 .tab.active { color: #fff; background: var(--accent); }
 
@@ -169,7 +169,7 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 
 .task.pickable { cursor: pointer; }
 .tasks .task { border-radius: 8px; }
-.task.pickable:hover { background: var(--bg); }
+.task.pickable:hover { background: color-mix(in srgb, var(--bg) 30%, white); }
 .task.selected { background: color-mix(in srgb, var(--tag) 20%, white) !important; }
 .task .text[readonly] { cursor: inherit; }
 .task .text[readonly]:hover,

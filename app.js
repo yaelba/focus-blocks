@@ -447,13 +447,13 @@ function syncTimers() {
   clearTimeout(alarmTimeout);
   clearInterval(tickInterval);
   const s = state.pending?.session;
-  if (!s) return;
-  const left = s.endAt - Date.now();
+  const left = s ? s.endAt - Date.now() : 0;
   if (left > 0) {
     // A single timeout fires reliably in a background tab; the interval only drives the display.
     alarmTimeout = setTimeout(() => onTimeUp(s), left);
     tickInterval = setInterval(tick, 1000);
   }
+  keepAwake(left > 0);
 }
 
 function tick() {
@@ -478,6 +478,7 @@ function onTimeUp(s) {
   // The alarm may fire a few ms before endAt; it still counts as the end.
   if (state.pending?.session.id === s.id) state.pending.ended = true;
   clearInterval(tickInterval);
+  keepAwake(false);
   if (alertedId !== s.id) {
     alertedId = s.id;
     chime();
@@ -496,6 +497,36 @@ function notify(s) {
   const n = new Notification('Time’s up', { body: s.taskText, requireInteraction: true });
   n.onclick = () => { window.focus(); n.close(); };
 }
+
+// --- Screen wake lock: keeps the display (and so the Mac) awake while a session runs ---
+// Chrome drops the lock whenever the tab is hidden, so it's re-requested when the tab shows again.
+
+let wakeLock = null; // the WakeLockSentinel, or a promise for it while requesting
+
+async function keepAwake(on) {
+  if (!('wakeLock' in navigator)) return;
+  if (on && !wakeLock && document.visibilityState === 'visible') {
+    wakeLock = navigator.wakeLock.request('screen');
+    try {
+      wakeLock = await wakeLock;
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+      if (!isRunning()) keepAwake(false); // the session ended while we were waiting
+    } catch {
+      wakeLock = null;
+    }
+  } else if (!on && wakeLock) {
+    const lock = await Promise.resolve(wakeLock).catch(() => null);
+    wakeLock = null;
+    lock?.release?.();
+  }
+}
+
+function isRunning() {
+  const p = state.pending;
+  return Boolean(p && !p.ended && p.session.endAt > Date.now());
+}
+
+document.addEventListener('visibilitychange', () => keepAwake(isRunning()));
 
 // --- Sound (Web Audio, no files) ---
 

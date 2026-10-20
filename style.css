@@ -189,10 +189,10 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 .note { width: 100%; margin-bottom: 12px; }
 .outcomes { display: flex; gap: 8px; }
 .outcome { flex: 1; padding: 9px; font-weight: 500; }
-.outcome.done { background: color-mix(in srgb, var(--done) 14%, white); color: var(--done); }
-.outcome.strayed { background: color-mix(in srgb, var(--strayed) 12%, white); color: var(--strayed); }
-.outcome.done:hover { background: var(--done); color: #fff; border-color: transparent; }
-.outcome.strayed:hover { background: var(--strayed); color: #fff; border-color: transparent; }
+.outcome.done { background: color-mix(in srgb, var(--done) 14%, white); color: var(--done); border: 2px solid var(--done); }
+.outcome.strayed { background: color-mix(in srgb, var(--strayed) 12%, white); color: var(--strayed); border: 2px solid var(--strayed); }
+.outcome.done:hover { background: var(--done); color: #fff; }
+.outcome.strayed:hover { background: var(--strayed); color: #fff; }
 
 /* sessions list */
 

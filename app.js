@@ -655,6 +655,21 @@ async function removeTag(tag) {
   render();
 }
 
+// --- keyboard: ← / → switch views, unless the cursor is in a field ---
+
+const VIEW_ORDER = ['today', 'recent', 'tags', 'archive'];
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
+  const el = e.target;
+  // Read-only task names count as not typing (clicking a task row focuses one).
+  if (el.matches('textarea, select, [contenteditable]') || (el.matches('input') && !el.readOnly)) return;
+  e.preventDefault();
+  const i = VIEW_ORDER.indexOf(state.view) + (e.key === 'ArrowRight' ? 1 : -1);
+  show(VIEW_ORDER[(i + VIEW_ORDER.length) % VIEW_ORDER.length]);
+});
+
 // --- day rollover ---
 
 function checkDate() {

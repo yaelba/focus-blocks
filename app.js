@@ -602,7 +602,8 @@ function archiveEntries(day) {
     const g = groupOf.get(s.taskId);
     if (g) g.minutes += s.minutes;
   }
-  return [...groups.values()];
+  // Most focus time first; ties keep the task list order (sort is stable).
+  return [...groups.values()].sort((a, b) => b.minutes - a.minutes);
 }
 
 function renderArchive() {

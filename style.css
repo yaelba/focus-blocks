@@ -223,7 +223,8 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
   border-top: 1px solid var(--line);
 }
 .day-label { width: 92px; flex-shrink: 0; color: var(--muted); font-size: 13px; }
-.blocks { display: flex; flex-wrap: wrap; gap: 4px; }
+.blocks { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0; }
+.total { flex-shrink: 0; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .chunk { height: 24px; border-radius: 5px; }
 
 /* tags */

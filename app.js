@@ -574,8 +574,16 @@ function renderRecent() {
                 style: `background:${tagColor(s.tagId)};width:${Math.max(10, s.minutes * 3)}px`,
                 title: `${clock(s.startAt)} · ${s.taskText} · ${s.minutes} min`,
               }))
-            : h('span', { class: 'muted' }, '—')));
+            : h('span', { class: 'muted' }, '—')),
+        done.length > 0 && h('span', { class: 'total' }, formatTotal(done.reduce((sum, s) => sum + s.minutes, 0))));
     })));
+}
+
+// 95 → "1h35m", 45 → "45m", 120 → "2h"
+function formatTotal(minutes) {
+  const hrs = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return hrs ? `${hrs}h${mins ? `${mins}m` : ''}` : `${mins}m`;
 }
 
 // --- Archive: past days' tasks as plain text, for copy-pasting ---
@@ -664,7 +672,7 @@ document.addEventListener('keydown', (e) => {
   if (e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) return;
   const el = e.target;
   // Read-only task names count as not typing (clicking a task row focuses one).
-  if (el.matches('textarea, select, [contenteditable]') || (el.matches('input') && !el.readOnly)) return;
+  if (el instanceof Element && (el.matches('textarea, select, [contenteditable]') || (el.matches('input') && !el.readOnly))) return;
   e.preventDefault();
   const i = VIEW_ORDER.indexOf(state.view) + (e.key === 'ArrowRight' ? 1 : -1);
   show(VIEW_ORDER[(i + VIEW_ORDER.length) % VIEW_ORDER.length]);

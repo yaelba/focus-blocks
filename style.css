@@ -210,6 +210,8 @@ input:focus, select:focus { border-color: var(--accent) !important; outline: non
 .sessions .mins { color: color-mix(in srgb, var(--tag) 55%, var(--text)); font-weight: 500; }
 .stext { flex: 1; min-width: 0; }
 .note-text { color: var(--muted); }
+.sessions-total { text-align: right; padding: 4px 10px 0; color: var(--muted); font-size: 13px; }
+.sessions-total .total { color: var(--text); }
 
 /* recent */
 

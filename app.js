@@ -335,12 +335,16 @@ const completed = (sessions) =>
 function renderSessions() {
   const sessions = completed(state.day.sessions);
   if (!sessions.length) return h('p', { class: 'muted' }, 'No completed sessions yet.');
-  return h('ul', { class: 'sessions' }, sessions.map((s) =>
-    h('li', { style: `--tag:${tagColor(s.tagId)}` },
-      h('span', { class: 'time' }, clock(s.startAt)),
-      h('span', { class: 'bar', style: `background:${tagColor(s.tagId)}` }),
-      h('span', { class: 'stext' }, s.taskText, s.note && h('span', { class: 'note-text' }, ` — ${s.note}`)),
-      h('span', { class: 'mins' }, `${s.minutes} min`))));
+  const total = sessions.reduce((sum, s) => sum + s.minutes, 0);
+  return [
+    h('ul', { class: 'sessions' }, sessions.map((s) =>
+      h('li', { style: `--tag:${tagColor(s.tagId)}` },
+        h('span', { class: 'time' }, clock(s.startAt)),
+        h('span', { class: 'bar', style: `background:${tagColor(s.tagId)}` }),
+        h('span', { class: 'stext' }, s.taskText, s.note && h('span', { class: 'note-text' }, ` — ${s.note}`)),
+        h('span', { class: 'mins' }, `${s.minutes} min`)))),
+    h('div', { class: 'sessions-total' }, 'Total focus ', h('span', { class: 'total' }, formatTotal(total))),
+  ];
 }
 
 // --- Today actions ---

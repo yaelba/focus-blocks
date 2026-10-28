@@ -98,7 +98,7 @@ function renderHeader() {
     h('button', { class: 'tab' + (state.view === view ? ' active' : ''), onclick: () => show(view) }, label);
   return h('header', {},
     h('div', { class: 'date' }, dayLabel(state.date)),
-    h('nav', {}, tab('today', 'Today'), tab('recent', 'Recent'), tab('tags', 'Tags'), tab('archive', 'Archive')));
+    h('nav', {}, tab('today', 'Today'), tab('archive', 'Archive'), tab('recent', 'Recent'), tab('tags', 'Tags')));
 }
 
 async function loadViewData() {
@@ -665,7 +665,7 @@ async function removeTag(tag) {
 
 // --- keyboard: ← / → switch views, unless the cursor is in a field ---
 
-const VIEW_ORDER = ['today', 'recent', 'tags', 'archive'];
+const VIEW_ORDER = ['today', 'archive', 'recent', 'tags'];
 
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;

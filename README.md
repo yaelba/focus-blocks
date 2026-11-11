@@ -47,14 +47,14 @@ In the UI and the code a block is called a *session* ("Next session", "Completed
 | File | Role |
 |---|---|
 | `index.html` | Page shell; loads `style.css` and `app.js` |
-| `app.js` | All UI: state, rendering, timer, sound, notifications, wake lock, keyboard |
+| `app.js` | All UI: state, rendering, timer, sound (the chime is synthesized with Web Audio; no sound files), notifications, wake lock, keyboard |
 | `storage.js` | **All persistence** — the only file that touches `localStorage` |
 | `dates.js` | Date helpers (`todayStr`, `addDays`, `dayLabel`, `clock`) |
 | `style.css` | Styles (light mode only; colors as variables in `:root`) |
 | `icon.svg` | Tab icon |
 
 **Storage boundary.** The UI only calls the async functions in `storage.js` (`listTags`,
-`saveTag`, `getDay`, `saveTask`, `saveSession`, `listRecentDays`, `listPastDays`, …).
+`saveTag`, `getDay`, `saveTask`, `saveSession`, `listPastDays`, …).
 To sync with a phone later, replace that file with calls to a server; nothing else changes.
 
 **Stored data.** Keys `focus.tags` and `focus.day.YYYY-MM-DD`.
@@ -76,7 +76,9 @@ as the end even if it fires a few ms early); a 1-second interval only updates th
 **Rendering.** A small `h()` helper builds DOM nodes; most changes re-render the whole
 view. Picking a task updates the DOM in place so double-click-to-edit still works.
 
-No framework, no build step, no dependencies.
+No framework, no build step, no dependencies, no CI, no automated tests. Changes are
+checked by hand in Chrome (during development, with Claude in Chrome on a local copy and
+temporary test data).
 
 ## Run and deploy
 
@@ -87,7 +89,26 @@ Run locally (ES modules don't load from `file://`):
 Local data is separate from the live site's (different address, different `localStorage`).
 
 Deploy: push to `main`; GitHub Pages serves the repo root. It's live in about a minute,
-then press **Cmd+Shift+R** — Pages lets browsers cache files for 10 minutes.
+then press **Cmd+Shift+R** — Pages lets browsers cache files for 10 minutes. The tab
+icon is cached even longer: close and reopen the tab to see a new one.
+
+## Operational notes
+
+- **Access:** pushes use the GitHub CLI logged in as `yaelba`. If they fail with an auth
+  error, run `gh auth login`.
+- **Cost, domain, repo:** free. GitHub Pages is free for public repos, so the repo is
+  public (it holds only code, never data). No custom domain — the app runs on
+  `yaelba.github.io`.
+- **Not in use:** no backend, database, accounts/login, external APIs, analytics or
+  custom domain.
+- **How data gets lost:** everything lives only in this Chrome profile's `localStorage`
+  for `yaelba.github.io`. It's gone if that site's data is cleared (Chrome settings →
+  Privacy → site data, or clearing browsing data), if the Chrome profile is removed, or
+  another app on `yaelba.github.io` clears storage. It isn't on other browsers or
+  computers. There's no backup or export yet.
+- **Decommission:** delete the repo `yaelba/focus-blocks` (or Settings → Pages →
+  unpublish to keep the code but take the site down); optionally clear the site's data
+  in Chrome for `yaelba.github.io` (this also clears other apps' data on that address).
 
 ## Decisions
 

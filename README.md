@@ -1,26 +1,23 @@
 # Focus
 
-A single-user focus-block timer for Mac Chrome. Static files only, data in `localStorage`.
+A single-user focus-block timer used so far on Mac Chrome. Static files only, data in the browser's `localStorage`.
 Live at https://yaelba.github.io/focus-blocks/.
 
 ## App logic
 
 There are two concepts: **tasks** and **blocks**.
 
-- **Task** — something to work on, with one tag. You add tasks by writing them into the
-  day's list (the start-of-day screen, then the "Add a task" row on Today).
-- **Block** — a task plus a duration. You create one by picking a task from the list
-  (click it) and giving it a length (10 minutes by default, editable), then pressing Start.
+- **Task** — something to work on. You add tasks by writing them into the day's list.
+  Archive shows tasks from previous days' lists.
+- **Block** — a task plus a duration. You create one by picking a task from the list and assigning it a length.
   When the time is up you mark the block **Done** or **Strayed**.
 
-Where they show up:
+Tabs:
 
 - **Today** — the day's open tasks, the next/running block, and today's completed blocks
   with their total focus time.
-- **Recent** — only completed blocks, for the last 7 days, as rectangles colored by tag
-  with a daily total.
-- **Archive** — every task from past days (one entry per distinct task per day), with
-  the minutes of completed blocks on it that day.
+- **Recent** — a per-day history of completed blocks only, as rectangles colored by tag with a daily total.
+- **Archive** — every task from past days (also those wo completed blocks), with the minutes of completed blocks on it that day.
 - **Tags** — create, rename, recolor and delete tags.
 
 In the UI and the code a block is called a *session* ("Next session", "Completed sessions",
@@ -29,10 +26,10 @@ In the UI and the code a block is called a *session* ("Next session", "Completed
 ## Behavior rules
 
 - A block is **completed** only if it ran its full length and was marked Done. Strayed
-  and Quit midway blocks are not recorded at all, and the task is re-selected for another try.
+  and Quit midway blocks are not recorded at all.
 - Done does not finish the task: it stays in the list, since it may need more blocks.
-- Each day starts with an empty list; nothing carries over. Past tasks are copied from
-  the Archive.
+- Each day starts with an empty list; nothing carries over. 
+  Archive includes tasks from previous days that can be copied.
 - Deleting a task from Today only hides it (it still appears in that day's Archive).
   Deleting from the Archive removes it for good.
 - A task added twice on the same day (same text, ignoring case and spaces) is one Archive
@@ -41,6 +38,9 @@ In the UI and the code a block is called a *session* ("Next session", "Completed
   first Start). While a block runs, the screen is kept awake so the Mac doesn't sleep and
   delay the alarm — only while the tab is visible.
 - ← / → switch tabs, except while typing in a field.
+- If a save fails, a red notice says so (and whether storage is full). On load, a notice
+  warns once storage passes 80% of the ~5M-character limit, which is shared by every app
+  on `yaelba.github.io`.
 
 ## Code design
 
@@ -98,3 +98,21 @@ then press **Cmd+Shift+R** — Pages lets browsers cache files for 10 minutes.
 - **Tasks are soft-deleted from Today** — so the Archive keeps everything you listed.
 - **Screen wake lock during blocks** — a sleeping Mac delayed the chime.
 - **No cache-busting yet** — Cmd+Shift+R after deploys is acceptable for now.
+
+## Possible future changes
+
+**Back up data to a file on the Mac (File System Access API).** Today everything lives
+only in `localStorage`, which is lost if site data is cleared. Chrome and Edge (desktop
+only — not Safari, Firefox or phones) let a page write to one file the user picks:
+
+- Set up once: click "Choose backup file", pick e.g. `focus-data.json` (in iCloud Drive
+  or Dropbox it also syncs across Macs), then choose "Allow on every visit" when Chrome
+  asks again on a later visit. After that the app saves to it on every change, no prompts.
+- Reconnect (one or two clicks, no data lost — the file is the safe copy) if: site data
+  or permissions are cleared (the link to the file is stored in browser storage), the
+  file is moved/renamed, "Allow this time" was picked, Chrome auto-revokes permissions
+  for a long-unused site (unconfirmed whether this applies to files), or on a new
+  computer/profile. The app should show a "Reconnect backup file" notice, not fail silently.
+- Implementation: `storage.js` writes to the file as well as (or instead of)
+  `localStorage`; add connect / reconnect / load-from-file controls.
+- Smaller alternative: manual Export / Import buttons (download a file, load it back).

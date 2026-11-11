@@ -1,8 +1,6 @@
 // All persistence lives here. The UI only calls these async functions, so
 // moving to a server (e.g. to sync with a phone) means replacing this file.
 
-import { addDays } from './dates.js';
-
 const PREFIX = 'focus.';
 const TAGS_KEY = PREFIX + 'tags';
 const dayKey = (date) => PREFIX + 'day.' + date;
@@ -16,8 +14,29 @@ function read(key, fallback) {
   }
 }
 
+// Thrown when the browser refuses a save because this site's storage is full.
+export class StorageFullError extends Error {}
+
 function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    if (e.name === 'QuotaExceededError') throw new StorageFullError('Browser storage is full', { cause: e });
+    throw e;
+  }
+}
+
+// Chrome allows roughly 5 million characters per site, shared by every app on the
+// same address (all of yaelba.github.io), so everything stored there is counted.
+const LIMIT_CHARS = 5_000_000;
+
+export async function storageUsage() {
+  let used = 0;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    used += key.length + (localStorage.getItem(key)?.length ?? 0);
+  }
+  return { used, limit: LIMIT_CHARS };
 }
 
 function loadDay(date) {
@@ -98,11 +117,4 @@ export async function listPastDays(beforeDate) {
     if (day && day.date < beforeDate && day.tasks.length) days.push(day);
   }
   return days.sort((a, b) => b.date.localeCompare(a.date));
-}
-
-// The `count` days before `beforeDate`, newest first (empty days included).
-export async function listRecentDays(beforeDate, count) {
-  const days = [];
-  for (let i = 1; i <= count; i++) days.push(loadDay(addDays(beforeDate, -i)));
-  return days;
 }

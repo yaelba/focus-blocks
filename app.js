@@ -4,7 +4,6 @@ import { todayStr, addDays, dayLabel, clock } from './dates.js';
 const PALETTE = ['#3d7cc9', '#3a9a68', '#e0892f', '#d2527f', '#7b5cc8', '#25999b', '#c9a227', '#7c776d'];
 // Earlier default colors, swapped for their brighter counterparts on load.
 const OLD_PALETTE = ['#7d9cc0', '#8db59a', '#d3a477', '#c58ca0', '#a69bcb', '#86b4b4', '#c8b66e', '#a7a29a'];
-const RECENT_DAYS = 7;
 const DEFAULT_MINUTES = 10;
 
 const state = {
@@ -49,6 +48,7 @@ const tagColor = (id) => tagById(id)?.color ?? '#a9a59b';
 // --- loading ---
 
 async function load() {
+  checkStorageSpace();
   state.date = todayStr();
   [state.tags, state.day] = await Promise.all([store.listTags(), store.getDay(state.date)]);
   await upgradeTagColors();
@@ -102,7 +102,7 @@ function renderHeader() {
 }
 
 async function loadViewData() {
-  if (state.view === 'recent') state.recent = await store.listRecentDays(state.date, RECENT_DAYS);
+  if (state.view === 'recent') state.recent = await loadRecent();
   if (state.view === 'archive') state.archive = await store.listPastDays(state.date);
 }
 
@@ -564,9 +564,26 @@ document.addEventListener('pointerdown', unlockAudio, { once: true });
 
 // --- Recent ---
 
+// Every day from yesterday back to the first day with a completed session,
+// newest first; days without one are kept so gaps show.
+async function loadRecent() {
+  const past = await store.listPastDays(state.date);
+  const oldest = past.findLast((d) => completed(d.sessions).length > 0);
+  if (!oldest) return [];
+  const byDate = new Map(past.map((d) => [d.date, d]));
+  const days = [];
+  for (let date = addDays(state.date, -1); date >= oldest.date; date = addDays(date, -1)) {
+    days.push(byDate.get(date) ?? { date, tasks: [], sessions: [] });
+  }
+  return days;
+}
+
 function renderRecent() {
+  if (!state.recent.length) {
+    return h('section', { class: 'card' }, h('p', { class: 'muted' }, 'No completed sessions from earlier days yet.'));
+  }
   return h('section', { class: 'card recent' },
-    h('p', { class: 'muted' }, 'Completed sessions from the last few days.'),
+    h('p', { class: 'muted' }, 'Completed sessions from earlier days, newest first.'),
     h('ul', { class: 'days' }, state.recent.map((day) => {
       const done = completed(day.sessions);
       return h('li', {},
@@ -693,5 +710,29 @@ function checkDate() {
 }
 document.addEventListener('visibilitychange', checkDate);
 setInterval(checkDate, 60_000);
+
+// --- notices: saves that fail, and storage running out ---
+
+function showNotice(text) {
+  document.getElementById('notice')?.remove();
+  const close = h('button', { class: 'icon', title: 'Dismiss', 'aria-label': 'Dismiss' }, '×');
+  const notice = h('div', { id: 'notice', class: 'notice', role: 'alert' }, h('span', {}, text), close);
+  close.onclick = () => notice.remove();
+  document.body.prepend(notice);
+}
+
+// Every action is async, so a failed save surfaces here instead of failing silently.
+window.addEventListener('unhandledrejection', (e) => {
+  showNotice(e.reason instanceof store.StorageFullError
+    ? 'Couldn’t save: this browser’s storage for the app is full. Your last change wasn’t kept.'
+    : 'Something went wrong — your last change may not have been saved. Reload to check.');
+});
+
+async function checkStorageSpace() {
+  const { used, limit } = await store.storageUsage();
+  if (used > limit * 0.8) {
+    showNotice(`Browser storage for this app is ${Math.round((used / limit) * 100)}% full. Saving will stop working when it’s full.`);
+  }
+}
 
 load();

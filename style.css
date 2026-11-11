@@ -256,3 +256,20 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .archive .remove { opacity: 0.45; display: inline-flex; padding: 4px 6px; }
 .archive li:hover .remove, .archive .remove:focus { opacity: 1; }
 .archive .mins.none { opacity: 0.5; }
+
+/* notice (failed save, storage nearly full) */
+
+.notice {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: color-mix(in srgb, var(--strayed) 14%, white);
+  color: var(--strayed);
+  border-bottom: 2px solid var(--strayed);
+  font-weight: 500;
+}
